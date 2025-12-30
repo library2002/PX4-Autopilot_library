@@ -445,6 +445,9 @@ ControlAllocator::Run()
 	// Publish actuator setpoint and allocator status
 	publish_actuator_controls();
 
+	// Publish independent sine wave test output (not affected by _publish_controls flag)
+	publish_sine_test_output();
+
 	// Publish status at limited rate, as it's somewhat expensive and we use it for slower dynamics
 	// (i.e. anti-integrator windup)
 	if (now - _last_status_pub >= 5_ms) {
@@ -710,6 +713,100 @@ ControlAllocator::publish_actuator_controls()
 
 		_actuator_servos_pub.publish(actuator_servos);
 	}
+}
+
+void
+ControlAllocator::publish_sine_test_output()
+{
+	// Only publish if enabled
+	if (_param_sine_test_enable.get() != 1) {
+		_sine_test_initialized = false;
+		_current_sweep_freq = 0.0f;
+		return;
+	}
+
+	actuator_test_sine_s test_output{};
+	test_output.timestamp = hrt_absolute_time();
+	test_output.enabled = true;
+	test_output.channel = _param_sine_test_channel.get();
+	test_output.amplitude = _param_sine_test_amplitude.get();
+	test_output.offset = _param_sine_test_offset.get();
+
+	// Initialize all channels to NaN
+	for (int i = 0; i < 8; i++) {
+		test_output.output[i] = NAN;
+	}
+
+	// Initialize start time on first run
+	if (!_sine_test_initialized) {
+		_sine_test_start_time = test_output.timestamp;
+		_last_freq_change_time = test_output.timestamp;
+		_sine_test_initialized = true;
+
+		// Initialize frequency based on mode
+		int mode = _param_sine_test_mode.get();
+		if (mode == 1) {  // Sweep mode
+			_current_sweep_freq = _param_sine_test_freq_min.get();
+			PX4_INFO("Sine sweep test started: ch=%d, freq=%.2f-%.2f Hz, step=%.2f Hz, time=%.1f s, amp=%.2f",
+				 test_output.channel, (double)_param_sine_test_freq_min.get(),
+				 (double)_param_sine_test_freq_max.get(), (double)_param_sine_test_freq_step.get(),
+				 (double)_param_sine_test_step_time.get(), (double)test_output.amplitude);
+		} else {  // Fixed mode
+			_current_sweep_freq = _param_sine_test_freq.get();
+			PX4_INFO("Sine test started: ch=%d, freq=%.2f Hz, amp=%.2f, offset=%.2f",
+				 test_output.channel, (double)_current_sweep_freq,
+				 (double)test_output.amplitude, (double)test_output.offset);
+		}
+	}
+
+	// Handle frequency sweep mode
+	int mode = _param_sine_test_mode.get();
+	if (mode == 1) {  // Sweep mode
+		float step_time_us = _param_sine_test_step_time.get() * 1e6f;  // Convert seconds to microseconds
+		float elapsed_since_change = test_output.timestamp - _last_freq_change_time;
+
+		// Check if it's time to change frequency
+		if (elapsed_since_change >= step_time_us) {
+			float freq_step = _param_sine_test_freq_step.get();
+			float freq_max = _param_sine_test_freq_max.get();
+			float freq_min = _param_sine_test_freq_min.get();
+
+			_current_sweep_freq += freq_step;
+
+			// Check if we've reached the max frequency
+			if (_current_sweep_freq > freq_max) {
+				// Loop back to start or stop
+				_current_sweep_freq = freq_min;
+				_sine_test_start_time = test_output.timestamp;  // Reset sine wave phase
+				PX4_INFO("Sweep completed, restarting from %.2f Hz", (double)_current_sweep_freq);
+			} else {
+				_sine_test_start_time = test_output.timestamp;  // Reset sine wave phase for new frequency
+				PX4_INFO("Sweep frequency changed to %.2f Hz", (double)_current_sweep_freq);
+			}
+
+			_last_freq_change_time = test_output.timestamp;
+		}
+
+		test_output.frequency = _current_sweep_freq;
+	} else {  // Fixed frequency mode
+		test_output.frequency = _param_sine_test_freq.get();
+	}
+
+	int test_channel = test_output.channel;
+
+	if (test_channel >= 0 && test_channel < 8) {
+		// Calculate elapsed time in seconds
+		float elapsed_time = (test_output.timestamp - _sine_test_start_time) / 1e6f;
+
+		// Generate sine wave: offset + amplitude * sin(2*pi*frequency*time)
+		float sine_value = test_output.offset +
+				   test_output.amplitude * sinf(2.0f * M_PI_F * test_output.frequency * elapsed_time);
+
+		// Constrain to valid range [-1, 1]
+		test_output.output[test_channel] = math::constrain(sine_value, -1.0f, 1.0f);
+	}
+
+	_actuator_test_sine_pub.publish(test_output);
 }
 
 void

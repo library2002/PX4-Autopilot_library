@@ -10,6 +10,10 @@ if DRIVERS_UAVCAN
         bool "Include arming status controller"
         default y
 
+    config UAVCAN_ATTITUDE_PUBLISHER
+        bool "Include attitude publisher"
+        default y
+
     config UAVCAN_BEEP_CONTROLLER
         bool "Include beep controller"
         default y
@@ -36,6 +40,10 @@ if DRIVERS_UAVCAN
 
     config UAVCAN_SENSOR_ACCEL
         bool "Subscribe to IMU:                         uavcan::equipment::ahrs::RawIMU"
+        default y
+
+    config UAVCAN_SENSOR_ATTITUDE
+        bool "Subscribe to Attitude Solution:           uavcan::equipment::ahrs::Solution"
         default y
 
     config UAVCAN_SENSOR_AIRSPEED

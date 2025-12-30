@@ -232,6 +232,18 @@ PARAM_DEFINE_INT32(UAVCAN_LGT_LAND, 0);
 PARAM_DEFINE_INT32(UAVCAN_PUB_ARM, 0);
 
 /**
+ * publish attitude and position
+ *
+ * Enable UAVCAN attitude and position publication
+ *  uavcan::equipment::ahrs::Solution
+ *
+ * @boolean
+ * @reboot_required true
+ * @group UAVCAN
+ */
+PARAM_DEFINE_INT32(UAVCAN_PUB_ATT, 0);
+
+/**
  * publish RTCM stream
  *
  * Enable UAVCAN RTCM stream publication
@@ -412,6 +424,18 @@ PARAM_DEFINE_INT32(UAVCAN_SUB_IMU, 0);
  * @group UAVCAN
  */
 PARAM_DEFINE_INT32(UAVCAN_SUB_MAG, 1);
+
+/**
+ * subscription attitude
+ *
+ * Enable UAVCAN attitude subscription.
+ *  uavcan::equipment::ahrs::Solution
+ *
+ * @boolean
+ * @reboot_required true
+ * @group UAVCAN
+ */
+PARAM_DEFINE_INT32(UAVCAN_SUB_ATT, 0);
 
 /**
  * subscription range finder

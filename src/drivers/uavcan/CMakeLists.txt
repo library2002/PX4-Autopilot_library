@@ -146,6 +146,8 @@ px4_add_module(
 	SRCS
 		arming_status.cpp
 		arming_status.hpp
+		attitude.cpp
+		attitude.hpp
 		beep.cpp
 		beep.hpp
 		remoteid.cpp
@@ -166,6 +168,8 @@ px4_add_module(
 		actuators/servo.cpp
 
 		# Sensors
+		sensors/ahrs_solution.cpp
+		sensors/ahrs_solution.hpp
 		sensors/sensor_bridge.cpp
 		sensors/differential_pressure.cpp
 		sensors/baro.cpp

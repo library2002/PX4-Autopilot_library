@@ -63,6 +63,10 @@
 #include "arming_status.hpp"
 #endif
 
+#if defined(CONFIG_UAVCAN_ATTITUDE_PUBLISHER)
+#include "attitude.hpp"
+#endif
+
 #if defined(CONFIG_UAVCAN_BEEP_CONTROLLER)
 #include "beep.hpp"
 #endif
@@ -261,6 +265,9 @@ private:
 
 #if defined(CONFIG_UAVCAN_ARMING_CONTROLLER)
 	UavcanArmingStatus		_arming_status_controller;
+#endif
+#if defined(CONFIG_UAVCAN_ATTITUDE_PUBLISHER)
+	UavcanAttitudePublisher		_attitude_publisher;
 #endif
 #if defined(CONFIG_UAVCAN_BEEP_CONTROLLER)
 	UavcanBeepController		_beep_controller;

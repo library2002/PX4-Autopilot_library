@@ -75,6 +75,9 @@
 #if defined(CONFIG_UAVCAN_SENSOR_MAG)
 #include "mag.hpp"
 #endif
+#if defined(CONFIG_UAVCAN_SENSOR_ATTITUDE)
+#include "ahrs_solution.hpp"
+#endif
 #if defined(CONFIG_UAVCAN_SENSOR_RANGEFINDER)
 #include "rangefinder.hpp"
 #endif
@@ -206,6 +209,16 @@ void IUavcanSensorBridge::make_all(uavcan::INode &node, List<IUavcanSensorBridge
 	if (uavcan_sub_imu != 0) {
 		list.add(new UavcanAccelBridge(node, node_info_publisher));
 		list.add(new UavcanGyroBridge(node, node_info_publisher));
+	}
+
+#endif
+
+#if defined(CONFIG_UAVCAN_SENSOR_ATTITUDE)
+	int32_t uavcan_sub_att = 1;
+	param_get(param_find("UAVCAN_SUB_ATT"), &uavcan_sub_att);
+
+	if (uavcan_sub_att != 0) {
+		list.add(new UavcanAhrsSolutionBridge(node, node_info_publisher));
 	}
 
 #endif

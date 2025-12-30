@@ -83,6 +83,9 @@ UavcanNode::UavcanNode(uavcan::ICanDriver &can_driver, uavcan::ISystemClock &sys
 #if defined(CONFIG_UAVCAN_ARMING_CONTROLLER)
 	_arming_status_controller(_node),
 #endif
+#if defined(CONFIG_UAVCAN_ATTITUDE_PUBLISHER)
+	_attitude_publisher(_node),
+#endif
 #if defined(CONFIG_UAVCAN_BEEP_CONTROLLER)
 	_beep_controller(_node),
 #endif
@@ -511,6 +514,21 @@ UavcanNode::init(uavcan::NodeID node_id, UAVCAN_DRIVER::BusEvent &bus_events)
 
 	if (uavcan_pub_arm == 1) {
 		ret = _arming_status_controller.init();
+
+		if (ret < 0) {
+			return ret;
+		}
+	}
+
+#endif
+
+#if defined(CONFIG_UAVCAN_ATTITUDE_PUBLISHER)
+	// UAVCAN_PUB_ATT
+	int32_t uavcan_pub_att = 0;
+	param_get(param_find("UAVCAN_PUB_ATT"), &uavcan_pub_att);
+
+	if (uavcan_pub_att == 1) {
+		ret = _attitude_publisher.init();
 
 		if (ret < 0) {
 			return ret;

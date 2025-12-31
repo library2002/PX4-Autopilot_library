@@ -7,12 +7,12 @@
 **工作原理**：
 - Control Allocator 模块根据参数生成正弦波信号（公式：output = offset + amplitude × sin(2πft)）
 - 通过 `actuator_test_sine` uORB 话题发布测试信号
-- PWM Output 驱动订阅该信号并转换为 PWM 输出（[−1, 1] → [1000, 2000]μs）
+- PWM Output 驱动订阅该信号并转换为 PWM 输出（[−1, 1] → [1500, 1900]μs）
 - 支持 8 个独立通道，可单独或同时测试
 
 **两种工作模式**：
 - **固定频率模式**：输出恒定频率的正弦波
-- **扫频模式**：自动从起始频率逐步递增到结束频率，每个频率保持设定时间
+- **连续扫频模式（Chirp）**：频率从起始值连续平滑增加到结束值，无阶跃，波形不间断
 
 ## 2. 为什么使用正弦波测试？
 
@@ -32,7 +32,6 @@
 得到模型：增益 = 0.9, 相位延迟 = -30° (在1Hz频率下)
 ```
 
-**这就是经典的频域系统辨识方法**！
 
 ### 2.2 线性系统的特殊性质
 
@@ -133,12 +132,6 @@
 - 可以拟合出系统的**传递函数模型** G(s)
 - 用于控制器设计和性能预测
 
-**实际应用**：
-- 识别控制系统的频率特性
-- 优化 PID 参数（避免在相位裕度不足的频率激进调参）
-- 检测机械共振频率
-- 验证执行器带宽是否满足设计要求
-
 ### 2.5 数据记录与分析
 
 测试时，系统会同步记录：
@@ -168,10 +161,10 @@ plot_bode(frequencies, gains, phases)
 | `msg/ActuatorTestSine.msg` | 定义 uORB 消息格式（通道、频率、幅值、偏置、8 通道输出数组） |
 | `msg/CMakeLists.txt` | 注册消息到编译系统 |
 | `src/modules/control_allocator/ControlAllocator.hpp` | 添加发布者、参数声明、状态变量 |
-| `src/modules/control_allocator/ControlAllocator.cpp` | 实现 `publish_sine_test_output()` 函数，周期性生成并发布正弦波 |
+| `src/modules/control_allocator/ControlAllocator.cpp` | 实现 `publish_sine_test_output()-719行` 函数，周期性生成并发布正弦波 |
 | `src/modules/control_allocator/module.yaml` | 定义 5 个参数（CA_SINE_TST_*）的类型、范围、默认值 |
 | `src/drivers/pwm_out/PWMOut.hpp` | 添加 `actuator_test_sine` 订阅者声明 |
-| `src/drivers/pwm_out/PWMOut.cpp` | 订阅测试信号，转换为 PWM 并输出到硬件 |
+| `src/drivers/pwm_out/PWMOut.cpp` | `170行`订阅测试信号，转换为 PWM 并输出到硬件 |
 
 ## 4. 参数配置
 
@@ -191,14 +184,15 @@ plot_bode(frequencies, gains, phases)
 | ---- | ---- | ---- | ------ | ---- |
 | `CA_SINE_TST_FREQ` | FLOAT | 0.1-20.0 | 0.5 | 正弦波频率 (Hz) |
 
-### 3.3 扫频模式参数
+### 4.3 连续扫频模式参数
 
 | 参数 | 类型 | 范围 | 默认值 | 说明 |
 | ---- | ---- | ---- | ------ | ---- |
 | `CA_SINE_TST_F_MIN` | FLOAT | 0.1-20.0 | 0.5 | 起始频率 (Hz) |
 | `CA_SINE_TST_F_MAX` | FLOAT | 0.1-20.0 | 5.0 | 结束频率 (Hz) |
-| `CA_SINE_TST_STEP` | FLOAT | 0.1-5.0 | 0.5 | 频率步进 (Hz) |
-| `CA_SINE_TST_TIME` | FLOAT | 1.0-120.0 | 10.0 | 每个频率持续时间 (秒) |
+| `CA_SINE_TST_TIME` | FLOAT | 1.0-300.0 | 30.0 | 完整扫频周期时间 (秒) - 从f_min到f_max的总时长 |
+
+**注意**：`CA_SINE_TST_STEP` 参数在chirp模式下不使用，频率连续变化
 
 ### 3.4 配置示例
 
@@ -213,15 +207,14 @@ param set CA_SINE_TST_OFS 0.0       # 中立位置
 param save
 ```
 
-**扫频模式**：
+**连续扫频模式（Chirp）**：
 ```bash
 param set CA_SINE_TST_EN 1          # 启用测试
 param set CA_SINE_TST_CH 0          # 通道 0
-param set CA_SINE_TST_MODE 1        # 扫频模式
+param set CA_SINE_TST_MODE 1        # 连续扫频模式
 param set CA_SINE_TST_F_MIN 0.5     # 从 0.5Hz 开始
 param set CA_SINE_TST_F_MAX 5.0     # 到 5.0Hz 结束
-param set CA_SINE_TST_STEP 0.5      # 每次增加 0.5Hz
-param set CA_SINE_TST_TIME 10.0     # 每个频率持续 10 秒
+param set CA_SINE_TST_TIME 30.0     # 30秒内完成扫频（频率连续增加）
 param set CA_SINE_TST_AMP 0.3       # 30% 幅度
 param save
 ```
@@ -267,23 +260,21 @@ param set CA_SINE_TST_FREQ 0.2      # 5秒/周期
 param set CA_SINE_TST_AMP 0.3
 ```
 
-**自动扫频测试**（获取完整频率响应曲线）：
+**连续扫频测试（Chirp）**（获取完整频率响应曲线）：
 ```bash
-param set CA_SINE_TST_MODE 1        # 扫频模式
+param set CA_SINE_TST_MODE 1        # 连续扫频模式
 param set CA_SINE_TST_F_MIN 0.5     # 起始 0.5Hz
 param set CA_SINE_TST_F_MAX 5.0     # 结束 5.0Hz
-param set CA_SINE_TST_STEP 0.5      # 步进 0.5Hz
-param set CA_SINE_TST_TIME 15.0     # 每个频率 15 秒
+param set CA_SINE_TST_TIME 45.0     # 45秒内频率连续从0.5Hz增加到5.0Hz
 param set CA_SINE_TST_AMP 0.2       # 20% 幅度
 ```
-扫频序列：0.5Hz (15s) → 1.0Hz (15s) → 1.5Hz (15s) → 2.0Hz (15s) → 2.5Hz (15s) → 3.0Hz (15s) → 3.5Hz (15s) → 4.0Hz (15s) → 4.5Hz (15s) → 5.0Hz (15s) → 循环
+频率变化：0.5Hz → 0.6Hz → 0.8Hz → 1.0Hz → ... → 4.8Hz → 5.0Hz（连续平滑过渡，无跳变）→ 循环
 
-**快速扫频测试**（粗略评估）：
+**快速扫频测试**（快速评估）：
 ```bash
 param set CA_SINE_TST_F_MIN 0.5
 param set CA_SINE_TST_F_MAX 10.0
-param set CA_SINE_TST_STEP 1.0      # 大步进
-param set CA_SINE_TST_TIME 5.0      # 短时间
+param set CA_SINE_TST_TIME 20.0     # 20秒快速扫过所有频率
 ```
 
 **偏置位置测试**（测试不同修整位置的响应）：
@@ -319,22 +310,27 @@ param set CA_SINE_TST_AMP 0.1       # 小幅振荡
 ## 9. 技术细节
 
 **信号生成公式**：
+
+固定频率模式：
 ```
 output(t) = offset + amplitude × sin(2π × frequency × t)
 ```
-其中 t 为从启动测试开始的经过时间（秒）
 
-**扫频逻辑**：
-- 初始频率 = `CA_SINE_TST_F_MIN`
-- 每隔 `CA_SINE_TST_TIME` 秒，频率增加 `CA_SINE_TST_STEP`
-- 当频率超过 `CA_SINE_TST_F_MAX` 时，重置为 `CA_SINE_TST_F_MIN` 并循环
-- 每次频率变化时，正弦波相位重置（从 0 开始）
+连续扫频模式（线性调频 Chirp）：
+```
+瞬时频率: f(t) = f_min + (f_max - f_min) × (t / T_sweep)
+相位: φ(t) = 2π × [f_min × t + (f_max - f_min) × t² / (2 × T_sweep)]
+output(t) = offset + amplitude × sin(φ(t))
+```
+其中：
+- t 为从启动测试开始的经过时间（秒）
+- T_sweep = `CA_SINE_TST_TIME`（扫频周期）
 
-**扫频时间计算**：
-```
-总时间 = (F_MAX - F_MIN) / STEP × TIME
-例如：(5.0 - 0.5) / 0.5 × 10 = 90 秒
-```
+**连续扫频特点**：
+- 频率从 `CA_SINE_TST_F_MIN` 线性连续增加到 `CA_SINE_TST_F_MAX`
+- 波形完全连续，无相位跳变或间断
+- 到达最大频率后自动循环回起始频率
+- 整个扫频周期为 `CA_SINE_TST_TIME` 秒
 
 **PWM 映射**：`PWM(μs) = 1500 + output × 500`，将归一化值 [-1, 1] 转换为 [1000, 2000]μs 脉宽
 
@@ -342,12 +338,12 @@ output(t) = offset + amplitude × sin(2π × frequency × t)
 
 **建议测试参数**：
 
-| 测试类型 | 模式 | 频率范围 (Hz) | 步进/时间 | 幅值 | 备注 |
-| -------- | ---- | ------------- | --------- | ---- | ---- |
+| 测试类型 | 模式 | 频率范围 (Hz) | 扫频时间 | 幅值 | 备注 |
+| -------- | ---- | ------------- | -------- | ---- | ---- |
 | 地面测试 | 固定 | 0.5-2.0 | - | 0.3-0.5 | 观察舵面动作 |
 | 首次飞行 | 固定 | 0.2-0.5 | - | 0.1-0.2 | 极度保守 |
-| 精细扫频 | 扫频 | 0.5-5.0 | 0.5Hz / 15s | 0.2-0.3 | 标准频率响应分析 |
-| 快速扫频 | 扫频 | 0.5-10.0 | 1.0Hz / 5s | 0.1-0.2 | 快速评估 |
+| 标准Chirp | Chirp | 0.5-5.0 | 45s | 0.2-0.3 | 连续扫频，标准频率响应分析 |
+| 快速Chirp | Chirp | 0.5-10.0 | 20s | 0.1-0.2 | 快速评估完整频段 |
 | 高频测试 | 固定 | 5.0-20.0 | - | 0.1-0.2 | 需谨慎，可能激发振动 |
 
 **QGroundControl 操作**：
@@ -358,8 +354,8 @@ output(t) = offset + amplitude × sin(2π × frequency × t)
    # 固定频率快速启动
    param set CA_SINE_TST_EN 1; param set CA_SINE_TST_MODE 0; param set CA_SINE_TST_FREQ 1.0
 
-   # 扫频快速启动
-   param set CA_SINE_TST_EN 1; param set CA_SINE_TST_MODE 1
+   # 连续扫频快速启动
+   param set CA_SINE_TST_EN 1; param set CA_SINE_TST_MODE 1; param set CA_SINE_TST_TIME 30.0
 
    # 停止测试
    param set CA_SINE_TST_EN 0

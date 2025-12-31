@@ -173,12 +173,12 @@ void PWMOut::Run()
 	if (_actuator_test_sine_sub.update(&test_sine)) {
 		if (test_sine.enabled && test_sine.channel < _num_outputs) {
 			if (_pwm_initialized && (_pwm_mask & (1 << test_sine.channel))) {
-				// Convert normalized output [-1, 1] to PWM value [1000, 2000]
+				// Convert normalized output [-1, 1] to PWM value [1500, 1900]
 				float sine_output = test_sine.output[test_sine.channel];
 				if (PX4_ISFINITE(sine_output)) {
-					// Map from [-1, 1] to [1000, 2000] microseconds
-					uint16_t pwm_value = (uint16_t)(1500.0f + sine_output * 500.0f);
-					pwm_value = math::constrain(pwm_value, (uint16_t)1000, (uint16_t)2000);
+					// Map from [-1, 1] to [1500, 1900] microseconds
+					uint16_t pwm_value = (uint16_t)(1700.0f + sine_output * 200.0f);
+					pwm_value = math::constrain(pwm_value, (uint16_t)1500, (uint16_t)1900);
 					up_pwm_servo_set(test_sine.channel, pwm_value);
 					up_pwm_update(_pwm_mask);
 				}

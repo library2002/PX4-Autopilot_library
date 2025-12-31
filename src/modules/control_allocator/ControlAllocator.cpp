@@ -745,12 +745,12 @@ ControlAllocator::publish_sine_test_output()
 
 		// Initialize frequency based on mode
 		int mode = _param_sine_test_mode.get();
-		if (mode == 1) {  // Sweep mode
+		if (mode == 1) {  // Continuous sweep mode (chirp)
 			_current_sweep_freq = _param_sine_test_freq_min.get();
-			PX4_INFO("Sine sweep test started: ch=%d, freq=%.2f-%.2f Hz, step=%.2f Hz, time=%.1f s, amp=%.2f",
+			PX4_INFO("Continuous chirp sweep started: ch=%d, freq=%.2f-%.2f Hz, duration=%.1f s, amp=%.2f",
 				 test_output.channel, (double)_param_sine_test_freq_min.get(),
-				 (double)_param_sine_test_freq_max.get(), (double)_param_sine_test_freq_step.get(),
-				 (double)_param_sine_test_step_time.get(), (double)test_output.amplitude);
+				 (double)_param_sine_test_freq_max.get(), (double)_param_sine_test_step_time.get(),
+				 (double)test_output.amplitude);
 		} else {  // Fixed mode
 			_current_sweep_freq = _param_sine_test_freq.get();
 			PX4_INFO("Sine test started: ch=%d, freq=%.2f Hz, amp=%.2f, offset=%.2f",
@@ -759,48 +759,42 @@ ControlAllocator::publish_sine_test_output()
 		}
 	}
 
+	// Calculate elapsed time in seconds from test start
+	float elapsed_time = (test_output.timestamp - _sine_test_start_time) / 1e6f;
+
 	// Handle frequency sweep mode
 	int mode = _param_sine_test_mode.get();
-	if (mode == 1) {  // Sweep mode
-		float step_time_us = _param_sine_test_step_time.get() * 1e6f;  // Convert seconds to microseconds
-		float elapsed_since_change = test_output.timestamp - _last_freq_change_time;
+	float instantaneous_freq;
+	float phase;
 
-		// Check if it's time to change frequency
-		if (elapsed_since_change >= step_time_us) {
-			float freq_step = _param_sine_test_freq_step.get();
-			float freq_max = _param_sine_test_freq_max.get();
-			float freq_min = _param_sine_test_freq_min.get();
+	if (mode == 1) {  // Continuous sweep mode (chirp signal)
+		float freq_min = _param_sine_test_freq_min.get();
+		float freq_max = _param_sine_test_freq_max.get();
+		float sweep_time = _param_sine_test_step_time.get();  // Now used as total sweep duration
 
-			_current_sweep_freq += freq_step;
+		// Linear frequency sweep: f(t) = f_min + (f_max - f_min) * (t / T)
+		float sweep_progress = fmodf(elapsed_time, sweep_time) / sweep_time;  // 0 to 1, loops
+		instantaneous_freq = freq_min + (freq_max - freq_min) * sweep_progress;
 
-			// Check if we've reached the max frequency
-			if (_current_sweep_freq > freq_max) {
-				// Loop back to start or stop
-				_current_sweep_freq = freq_min;
-				_sine_test_start_time = test_output.timestamp;  // Reset sine wave phase
-				PX4_INFO("Sweep completed, restarting from %.2f Hz", (double)_current_sweep_freq);
-			} else {
-				_sine_test_start_time = test_output.timestamp;  // Reset sine wave phase for new frequency
-				PX4_INFO("Sweep frequency changed to %.2f Hz", (double)_current_sweep_freq);
-			}
+		// For chirp signal, phase is integral of frequency:
+		// φ(t) = 2π * [f_min*t + (f_max-f_min)*t²/(2*T)]
+		float t_mod = fmodf(elapsed_time, sweep_time);  // Time within current sweep cycle
+		phase = 2.0f * M_PI_F * (freq_min * t_mod +
+		                         (freq_max - freq_min) * t_mod * t_mod / (2.0f * sweep_time));
 
-			_last_freq_change_time = test_output.timestamp;
-		}
+		test_output.frequency = instantaneous_freq;
 
-		test_output.frequency = _current_sweep_freq;
 	} else {  // Fixed frequency mode
-		test_output.frequency = _param_sine_test_freq.get();
+		instantaneous_freq = _param_sine_test_freq.get();
+		phase = 2.0f * M_PI_F * instantaneous_freq * elapsed_time;
+		test_output.frequency = instantaneous_freq;
 	}
 
 	int test_channel = test_output.channel;
 
 	if (test_channel >= 0 && test_channel < 8) {
-		// Calculate elapsed time in seconds
-		float elapsed_time = (test_output.timestamp - _sine_test_start_time) / 1e6f;
-
-		// Generate sine wave: offset + amplitude * sin(2*pi*frequency*time)
-		float sine_value = test_output.offset +
-				   test_output.amplitude * sinf(2.0f * M_PI_F * test_output.frequency * elapsed_time);
+		// Generate sine wave using calculated phase
+		float sine_value = test_output.offset + test_output.amplitude * sinf(phase);
 
 		// Constrain to valid range [-1, 1]
 		test_output.output[test_channel] = math::constrain(sine_value, -1.0f, 1.0f);

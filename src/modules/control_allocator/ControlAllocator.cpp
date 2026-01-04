@@ -773,11 +773,21 @@ ControlAllocator::publish_sine_test_output()
 		float sweep_time = _param_sine_test_step_time.get();  // Now used as total sweep duration
 
 		// Linear frequency sweep: f(t) = f_min + (f_max - f_min) * (t / T)
+		// 将 经过的时间 标准化为表示单个扫描周期进度的重复 0-1 范围
+		/**
+		* fmodf()`函数计算`elapsed_time`除以`sweep_time`的浮点余数，实际经过的时间可能超过一个循环
+   		* 有效包裹 经过的时间 以保持在[0, sweep_time)范围内。除以
+  		* sweep_time 将其归一化到 [0, 1) 范围内。
+		*/
 		float sweep_progress = fmodf(elapsed_time, sweep_time) / sweep_time;  // 0 to 1, loops
-		instantaneous_freq = freq_min + (freq_max - freq_min) * sweep_progress;
+		instantaneous_freq = freq_min + (freq_max - freq_min) * sweep_progress; //当前频率f(t)
 
-		// For chirp signal, phase is integral of frequency:
-		// φ(t) = 2π * [f_min*t + (f_max-f_min)*t²/(2*T)]
+		/* For chirp signal, phase is integral of frequency:
+		* 瞬时频率 f(t) = ω(t) / (2π)
+		* 瞬时角频率ω(t) = dφ/dt = 2π·f(t)  =>  dφ = 2π·f(t) dt
+		* φ(t) = ∫ 2π·f(t) dt = 2π * [f_min·t + (f_max - f_min)·t²/(2·T)]
+		*      = 2π * [f_min*t + (f_max-f_min)*t²/(2*T)]
+		*/
 		float t_mod = fmodf(elapsed_time, sweep_time);  // Time within current sweep cycle
 		phase = 2.0f * M_PI_F * (freq_min * t_mod +
 		                         (freq_max - freq_min) * t_mod * t_mod / (2.0f * sweep_time));

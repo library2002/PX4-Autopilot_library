@@ -161,7 +161,7 @@ plot_bode(frequencies, gains, phases)
 | `msg/ActuatorTestSine.msg` | 定义 uORB 消息格式（通道、频率、幅值、偏置、8 通道输出数组） |
 | `msg/CMakeLists.txt` | 注册消息到编译系统 |
 | `src/modules/control_allocator/ControlAllocator.hpp` | 添加发布者、参数声明、状态变量 |
-| `src/modules/control_allocator/ControlAllocator.cpp` | 实现 `publish_sine_test_output()-719行` 函数，周期性生成并发布正弦波 |
+| `src/modules/control_allocator/ControlAllocator.cpp` | 实现 `publish_sine_test_output()-719行` 函数，周期性生成并发布正弦波 `448行`实现读取遥控器数值|
 | `src/modules/control_allocator/module.yaml` | 定义 5 个参数（CA_SINE_TST_*）的类型、范围、默认值 |
 | `src/drivers/pwm_out/PWMOut.hpp` | 添加 `actuator_test_sine` 订阅者声明 |
 | `src/drivers/pwm_out/PWMOut.cpp` | `170行`订阅测试信号，转换为 PWM 并输出到硬件 |
@@ -178,7 +178,7 @@ plot_bode(frequencies, gains, phases)
 | `CA_SINE_TST_AMP` | FLOAT | 0.0-1.0 | 0.2 | 振幅（0.0-1.0） |
 | `CA_SINE_TST_OFS` | FLOAT | -1.0-1.0 | 0.0 | 直流偏置（0.0 为中立位置） |
 
-### 3.2 固定频率模式参数
+### 4.2 固定频率模式参数
 
 | 参数 | 类型 | 范围 | 默认值 | 说明 |
 | ---- | ---- | ---- | ------ | ---- |
@@ -194,7 +194,7 @@ plot_bode(frequencies, gains, phases)
 
 **注意**：`CA_SINE_TST_STEP` 参数在chirp模式下不使用，频率连续变化
 
-### 3.4 配置示例
+### 4.4 配置示例
 
 **固定频率模式**：
 ```bash
@@ -220,6 +220,57 @@ param save
 ```
 
 停止测试：`param set CA_SINE_TST_EN 0`
+
+### 4.5 遥控器实时控制
+
+通过遥控器开关可以在飞行中实时启用/禁用扫频测试，无需通过地面站修改参数。
+
+**配置步骤**：
+
+1. **设置RC通道映射**（将遥控器通道10映射到AUX1功能）：
+```bash
+param set RC_MAP_AUX1 10        # 使用遥控器通道10
+param save
+```
+
+2. **配置扫频参数**（提前设置好测试参数）：
+```bash
+param set CA_SINE_TST_CH 0      # 目标通道
+param set CA_SINE_TST_MODE 1    # Chirp模式
+param set CA_SINE_TST_F_MIN 0.5
+param set CA_SINE_TST_F_MAX 5.0
+param set CA_SINE_TST_TIME 30.0
+param set CA_SINE_TST_AMP 0.2
+param save
+```
+
+3. **通过遥控器控制**：
+   - **拨杆向上**（通道值 > 1500μs）：自动设置 `CA_SINE_TST_EN = 1`，启动扫频
+   - **拨杆向下**（通道值 ≤ 1500μs）：自动设置 `CA_SINE_TST_EN = 0`，停止扫频
+
+**验证方法**：
+```bash
+# 查看RC通道值（移动拨杆时实时变化）
+listener input_rc
+
+# 预期输出：
+# values[9]: 1800    ← 通道10（数组索引9），拨杆向上 → 扫频启动
+# values[9]: 1200    ← 拨杆向下 → 扫频停止
+
+# 确认扫频状态（自动跟随RC拨杆变化）
+param show CA_SINE_TST_EN
+```
+
+**QGroundControl检查**：
+- 打开 **Vehicle Setup** → **Radio** 页面
+- 移动遥控器通道10拨杆，观察对应通道条移动
+- 确认最大位置 > 1500，最小位置 < 1500
+
+**注意事项**：
+- RC_MAP_AUX1必须映射到有效通道（1-18）
+- 遥控器失联时扫频会自动停止（RC通道值读取失败）
+- 参数 `CA_SINE_TST_EN` 会被RC控制自动修改，无需手动设置
+- 如果不使用RC控制，保持 `RC_MAP_AUX1 = 0`（默认），手动通过参数控制
 
 ## 5. 编译与使用
 

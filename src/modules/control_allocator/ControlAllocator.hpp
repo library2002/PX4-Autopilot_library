@@ -241,7 +241,8 @@ private:
 		(ParamFloat<px4::params::CA_SINE_TST_FMIN>) _param_sine_test_freq_min,
 		(ParamFloat<px4::params::CA_SINE_TST_FMAX>) _param_sine_test_freq_max,
 		(ParamFloat<px4::params::CA_SINE_TST_STEP>) _param_sine_test_freq_step,
-		(ParamFloat<px4::params::CA_SINE_TST_TIME>) _param_sine_test_step_time
+		(ParamFloat<px4::params::CA_SINE_TST_TIME>) _param_sine_test_step_time,
+		(ParamInt<px4::params::CA_SINE_RC_CHK>) _param_sine_rc_check
 	)
 
 };

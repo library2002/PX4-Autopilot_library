@@ -172,6 +172,7 @@ plot_bode(frequencies, gains, phases)
 
 | 参数 | 类型 | 范围 | 默认值 | 说明 |
 | ---- | ---- | ---- | ------ | ---- |
+| `CA_SINE_RC_CHK` | INT32 | 0/1 | 0 | 遥控器控制功能开关，1=启用，0=禁用 |
 | `CA_SINE_TST_EN` | INT32 | 0/1 | 0 | 测试使能开关，1=启用，0=禁用 |
 | `CA_SINE_TST_CH` | INT32 | 0-7 | 0 | 输出通道号 |
 | `CA_SINE_TST_MODE` | INT32 | 0/1 | 0 | 测试模式：0=固定频率，1=扫频 |
@@ -225,15 +226,23 @@ param save
 
 通过遥控器开关可以在飞行中实时启用/禁用扫频测试，无需通过地面站修改参数。
 
+**重要说明**：遥控器控制功能需要先启用 `CA_SINE_RC_CHK` 参数，避免与其他使用RC_MAP_AUX1的功能冲突。
+
 **配置步骤**：
 
-1. **设置RC通道映射**（将遥控器通道10映射到AUX1功能）：
+1. **启用RC控制功能**（必须）：
+```bash
+param set CA_SINE_RC_CHK 1      # 启用RC通道控制（默认为0，不影响现有系统）
+param save
+```
+
+2. **设置RC通道映射**（将遥控器通道10映射到AUX1功能）：
 ```bash
 param set RC_MAP_AUX1 10        # 使用遥控器通道10
 param save
 ```
 
-2. **配置扫频参数**（提前设置好测试参数）：
+3. **配置扫频参数**（提前设置好测试参数）：
 ```bash
 param set CA_SINE_TST_CH 0      # 目标通道
 param set CA_SINE_TST_MODE 1    # Chirp模式
@@ -244,12 +253,15 @@ param set CA_SINE_TST_AMP 0.2
 param save
 ```
 
-3. **通过遥控器控制**：
+4. **通过遥控器控制**：
    - **拨杆向上**（通道值 > 1500μs）：自动设置 `CA_SINE_TST_EN = 1`，启动扫频
    - **拨杆向下**（通道值 ≤ 1500μs）：自动设置 `CA_SINE_TST_EN = 0`，停止扫频
 
 **验证方法**：
 ```bash
+# 查看RC控制开关状态
+param show CA_SINE_RC_CHK
+
 # 查看RC通道值（移动拨杆时实时变化）
 listener input_rc
 
@@ -267,10 +279,12 @@ param show CA_SINE_TST_EN
 - 确认最大位置 > 1500，最小位置 < 1500
 
 **注意事项**：
+- **避免冲突**：如果RC_MAP_AUX1用于其他功能（如云台控制），必须设置 `CA_SINE_RC_CHK = 0` 禁用RC控制功能
+- **默认禁用**：`CA_SINE_RC_CHK` 默认为0，不会影响现有系统，只有主动启用后才生效
 - RC_MAP_AUX1必须映射到有效通道（1-18）
 - 遥控器失联时扫频会自动停止（RC通道值读取失败）
 - 参数 `CA_SINE_TST_EN` 会被RC控制自动修改，无需手动设置
-- 如果不使用RC控制，保持 `RC_MAP_AUX1 = 0`（默认），手动通过参数控制
+- 如果不使用RC控制，保持 `CA_SINE_RC_CHK = 0` 和 `RC_MAP_AUX1 = 0`（默认），手动通过参数控制
 
 ## 5. 编译与使用
 

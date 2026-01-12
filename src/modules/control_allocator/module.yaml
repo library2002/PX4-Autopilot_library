@@ -218,6 +218,21 @@ parameters:
             decimal: 2
             default: 0.0
 
+        CA_SINE_RC_CHK:
+            description:
+                short: Enable RC channel control for sine test
+                long: |
+                    Enables real-time control of sine wave test via RC channel (RC_MAP_AUX1).
+                    When enabled, the RC channel value controls CA_SINE_TST_EN automatically:
+                    - Channel value > 1500us: Enable sine test (CA_SINE_TST_EN = 1)
+                    - Channel value <= 1500us: Disable sine test (CA_SINE_TST_EN = 0)
+                    Set to 0 to prevent conflicts when using RC_MAP_AUX1 for other purposes.
+            type: enum
+            values:
+                0: Disabled (manual parameter control only)
+                1: Enabled (RC channel controls test enable/disable)
+            default: 0
+
         # Servo params
         CA_SV${i}_SLEW:
             description:

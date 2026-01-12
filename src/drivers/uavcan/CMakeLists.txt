@@ -148,6 +148,8 @@ px4_add_module(
 		arming_status.hpp
 		attitude.cpp
 		attitude.hpp
+		control_command_sender.cpp
+		control_command_sender.hpp
 		beep.cpp
 		beep.hpp
 		remoteid.cpp
@@ -170,6 +172,8 @@ px4_add_module(
 		# Sensors
 		sensors/ahrs_solution.cpp
 		sensors/ahrs_solution.hpp
+		sensors/control_command.cpp
+		sensors/control_command.hpp
 		sensors/sensor_bridge.cpp
 		sensors/differential_pressure.cpp
 		sensors/baro.cpp

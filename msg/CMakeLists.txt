@@ -224,6 +224,7 @@ set(msg_files
 	TransponderReport.msg
 	TuneControl.msg
 	UavcanAttitude.msg
+	UavcanControlCommand.msg
 	UavcanParameterRequest.msg
 	UavcanParameterValue.msg
 	UlogStream.msg

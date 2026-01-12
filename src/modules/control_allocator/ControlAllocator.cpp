@@ -445,27 +445,29 @@ ControlAllocator::Run()
 	// Publish actuator setpoint and allocator status
 	publish_actuator_controls();
 
-	// Handle RC channel for sine test enable/disable
-	input_rc_s input_rc;
-	if (_input_rc_sub.update(&input_rc)) {
-		// 读取 RC_MAP_AUX1 映射的通道值
-		param_t rc_map_aux1_handle = param_find("RC_MAP_AUX1");
-		if (rc_map_aux1_handle != PARAM_INVALID) {
-			int32_t channel = 0;
-			param_get(rc_map_aux1_handle, &channel);
+	// Handle RC channel for sine test enable/disable (only if CA_SINE_RC_CHK is enabled)
+	if (_param_sine_rc_check.get() == 1) {
+		input_rc_s input_rc;
+		if (_input_rc_sub.update(&input_rc)) {
+			// 读取 RC_MAP_AUX1 映射的通道值
+			param_t rc_map_aux1_handle = param_find("RC_MAP_AUX1");
+			if (rc_map_aux1_handle != PARAM_INVALID) {
+				int32_t channel = 0;
+				param_get(rc_map_aux1_handle, &channel);
 
-			// Check if channel is valid and mapped (non-zero)
-			if (channel > 0 && channel <= input_rc_s::RC_INPUT_MAX_CHANNELS) {
-				// 地面站确定通道值范围方法：listener input_rc
-				// Read channel value (typically 1000-2000μs)
-				uint16_t rc_value = input_rc.values[channel - 1];  // Array index is 0-based
+				// Check if channel is valid and mapped (non-zero)
+				if (channel > 0 && channel <= input_rc_s::RC_INPUT_MAX_CHANNELS) {
+					// 地面站确定通道值范围方法：listener input_rc
+					// Read channel value (typically 1000-2000μs)
+					uint16_t rc_value = input_rc.values[channel - 1];  // Array index is 0-based
 
-				// Control sine test enable based on RC switch position
-				// Threshold at 1500μs (middle position)
-				if (rc_value > 1500) {
-					_param_sine_test_enable.set(1);  // Enable
-				} else {
-					_param_sine_test_enable.set(0);  // Disable
+					// Control sine test enable based on RC switch position
+					// Threshold at 1500μs (middle position)
+					if (rc_value > 1500) {
+						_param_sine_test_enable.set(1);  // Enable
+					} else {
+						_param_sine_test_enable.set(0);  // Disable
+					}
 				}
 			}
 		}

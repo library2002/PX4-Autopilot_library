@@ -244,6 +244,18 @@ PARAM_DEFINE_INT32(UAVCAN_PUB_ARM, 0);
 PARAM_DEFINE_INT32(UAVCAN_PUB_ATT, 0);
 
 /**
+ * publish control command
+ *
+ * Enable UAVCAN control command publication
+ *  uavcan::equipment::actuator::ArrayCommand
+ *
+ * @boolean
+ * @reboot_required true
+ * @group UAVCAN
+ */
+PARAM_DEFINE_INT32(UAVCAN_PUB_CTRL, 0);
+
+/**
  * publish RTCM stream
  *
  * Enable UAVCAN RTCM stream publication
@@ -436,6 +448,18 @@ PARAM_DEFINE_INT32(UAVCAN_SUB_MAG, 1);
  * @group UAVCAN
  */
 PARAM_DEFINE_INT32(UAVCAN_SUB_ATT, 0);
+
+/**
+ * subscription control command
+ *
+ * Enable UAVCAN control command subscription.
+ *  uavcan::equipment::actuator::ArrayCommand
+ *
+ * @boolean
+ * @reboot_required true
+ * @group UAVCAN
+ */
+PARAM_DEFINE_INT32(UAVCAN_SUB_CTRL, 0);
 
 /**
  * subscription range finder

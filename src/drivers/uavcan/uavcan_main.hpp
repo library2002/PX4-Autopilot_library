@@ -67,6 +67,10 @@
 #include "attitude.hpp"
 #endif
 
+#if defined(CONFIG_UAVCAN_CONTROL_COMMAND_SENDER)
+#include "control_command_sender.hpp"
+#endif
+
 #if defined(CONFIG_UAVCAN_BEEP_CONTROLLER)
 #include "beep.hpp"
 #endif
@@ -268,6 +272,9 @@ private:
 #endif
 #if defined(CONFIG_UAVCAN_ATTITUDE_PUBLISHER)
 	UavcanAttitudePublisher		_attitude_publisher;
+#endif
+#if defined(CONFIG_UAVCAN_CONTROL_COMMAND_SENDER)
+	UavcanControlCommandSender	_control_command_sender;
 #endif
 #if defined(CONFIG_UAVCAN_BEEP_CONTROLLER)
 	UavcanBeepController		_beep_controller;

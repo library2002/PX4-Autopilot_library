@@ -55,14 +55,31 @@ int UavcanControlCommandSender::init()
 	return 0;
 }
 
-uint16_t UavcanControlCommandSender::normalize_to_pwm(float normalized_value)
+uint16_t UavcanControlCommandSender::normalize_to_pwm(float value)
 {
-	// 限制输入范围到 -1.0 ~ +1.0
-	float clamped = math::constrain(normalized_value, -1.0f, 1.0f);
+	// 自动检测输入值类型并转换为PWM
+	uint16_t pwm;
 
-	// 转换为PWM范围 (1000-2000微秒)
-	// -1.0 -> 1000us, 0.0 -> 1500us, +1.0 -> 2000us
-	uint16_t pwm = static_cast<uint16_t>(PWM_CENTER + (clamped * (PWM_MAX - PWM_CENTER)));
+	// 如果值在PWM范围内（800-2200），直接使用
+	if (value >= 800.0f && value <= 2200.0f) {
+		// 输入已经是PWM微秒值
+		pwm = static_cast<uint16_t>(value);
+	}
+	// 如果值在归一化范围内（-1.1到+1.1），进行转换
+	else if (value >= -1.1f && value <= 1.1f) {
+		// 限制输入范围到 -1.0 ~ +1.0
+		float clamped = math::constrain(value, -1.0f, 1.0f);
+		// 转换为PWM范围 (1000-2000微秒)
+		// -1.0 -> 1000us, 0.0 -> 1500us, +1.0 -> 2000us
+		pwm = static_cast<uint16_t>(PWM_CENTER + (clamped * (PWM_MAX - PWM_CENTER)));
+	}
+	// 异常值，使用中点
+	else {
+		pwm = PWM_CENTER;
+	}
+
+	// 最终安全限制
+	pwm = math::constrain(pwm, (uint16_t)800, (uint16_t)2200);
 
 	return pwm;
 }

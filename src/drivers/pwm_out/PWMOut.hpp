@@ -51,6 +51,7 @@
 #include <uORB/Subscription.hpp>
 #include <uORB/topics/actuator_test_sine.h>
 #include <uORB/topics/parameter_update.h>
+#include <uORB/topics/uavcan_control_command.h>
 
 using namespace time_literals;
 
@@ -87,6 +88,7 @@ private:
 
 	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
 	uORB::Subscription _actuator_test_sine_sub{ORB_ID(actuator_test_sine)};
+	uORB::Subscription _uavcan_control_command_sub{ORB_ID(uavcan_control_command)};
 
 	unsigned	_num_outputs{DIRECT_PWM_OUTPUT_CHANNELS};
 

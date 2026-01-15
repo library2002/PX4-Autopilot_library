@@ -167,6 +167,25 @@ void PWMOut::Run()
 
 	_mixing_output.update();
 
+	// Check for UAVCAN control command and apply if available
+	// UAVCAN commands directly set PWM values from CAN bus
+	uavcan_control_command_s uavcan_cmd;
+	if (_uavcan_control_command_sub.update(&uavcan_cmd)) {
+		if (_pwm_initialized) {
+			// Apply PWM values from UAVCAN to all channels
+			for (uint8_t i = 0; i < math::min(uavcan_cmd.num_outputs, (uint8_t)_num_outputs); i++) {
+				if (_pwm_mask & (1 << i)) {
+					uint16_t pwm_value = uavcan_cmd.outputs[i];
+					// Validate PWM range (900-2100μs)
+					if (pwm_value >= 900 && pwm_value <= 2100) {
+						up_pwm_servo_set(i, pwm_value);
+					}
+				}
+			}
+			up_pwm_update(_pwm_mask);
+		}
+	}
+
 	// Check for sine test output and apply if enabled
 	// Sine test bypasses normal function mapping for direct hardware testing
 	actuator_test_sine_s test_sine;

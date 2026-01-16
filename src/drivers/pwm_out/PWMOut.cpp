@@ -172,7 +172,7 @@ void PWMOut::Run()
 	uavcan_control_command_s uavcan_cmd;
 	if (_uavcan_control_command_sub.update(&uavcan_cmd)) {
 		// Force PWM initialization if not already done
-		// PWM不解锁不可输出，此时便于测试直接强制解锁，测试完后再关闭
+		// disarmed 状态下PWM不可输出，此时便于测试直接强制解锁，测试完后再关闭
 		if (!_pwm_on) {
 			if (update_pwm_out_state(true)) {
 				_pwm_on = true;

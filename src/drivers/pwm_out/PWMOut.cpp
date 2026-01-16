@@ -171,6 +171,14 @@ void PWMOut::Run()
 	// UAVCAN commands directly set PWM values from CAN bus
 	uavcan_control_command_s uavcan_cmd;
 	if (_uavcan_control_command_sub.update(&uavcan_cmd)) {
+		// Force PWM initialization if not already done
+		// PWM不解锁不可输出，此时便于测试直接强制解锁，测试完后再关闭
+		if (!_pwm_on) {
+			if (update_pwm_out_state(true)) {
+				_pwm_on = true;
+			}
+		}
+
 		if (_pwm_initialized) {
 			// Apply PWM values from UAVCAN to all channels
 			for (uint8_t i = 0; i < math::min(uavcan_cmd.num_outputs, (uint8_t)_num_outputs); i++) {

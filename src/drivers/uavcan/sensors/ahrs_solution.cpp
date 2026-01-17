@@ -56,6 +56,7 @@ int UavcanAhrsSolutionBridge::init()
 
 void UavcanAhrsSolutionBridge::solution_sub_cb(const uavcan::ReceivedDataStructure<uavcan::equipment::ahrs::Solution> &msg)
 {
+	// 将接收的 UAVCAN Solution 消息转换为本地 uavcan_attitude 主题实例
 	uavcan_attitude_s report{};
 	report.timestamp = hrt_absolute_time();
 	report.timestamp_sample = msg.timestamp.usec;
@@ -134,7 +135,7 @@ void UavcanAhrsSolutionBridge::solution_sub_cb(const uavcan::ReceivedDataStructu
 		report.eph = NAN;
 		report.epv = NAN;
 	}
-
+	// 发布到接收方本地 uavcan_attitude 主题实例，供其他模块使用
 	publish(msg.getSrcNodeID().get(), &report);
 }
 

@@ -73,10 +73,11 @@ void UavcanAttitudePublisher::periodic_update(const uavcan::TimerEvent &)
 	/*
 	Read global position data (GPS)
 	vehicle_global_position uORB 话题：融合后的全局位置估计（经纬度）
-	*/ 
+	*/
 	vehicle_global_position_s global_pos{};
 	bool has_position = _global_position_sub.copy(&global_pos);
 
+	// 构建要发布到can的消息：格式为Solution （标准定义的姿态消息类型）
 	uavcan::equipment::ahrs::Solution msg{};
 
 	const uint64_t timestamp_sample = (attitude.timestamp_sample != 0) ? attitude.timestamp_sample : hrt_absolute_time();
@@ -101,22 +102,22 @@ void UavcanAttitudePublisher::periodic_update(const uavcan::TimerEvent &)
 	// 格式：[纬度, 经度, 海拔, 预留, 预留, 预留, 水平精度, 垂直精度, 预留]
 	if (has_position) {
 		msg.orientation_covariance.resize(9);
-		
+
 		// 获取 GPS 经纬度
 		double lat_deg = global_pos.lat;  // 纬度（度）
 		double lon_deg = global_pos.lon;  // 经度（度）
-		
+
 		// 将纬度和经度直接存储为单精度浮点（对大多数应用来说精度损失可接受）
 		// 如需更高精度，可以拆分为高位/低位部分
 		msg.orientation_covariance[0] = static_cast<float>(lat_deg);  // 纬度
 		msg.orientation_covariance[1] = static_cast<float>(lon_deg);  // 经度
 		msg.orientation_covariance[2] = global_pos.alt;  // 海拔高度 AMSL（米）
-		
+
 		// 速度数据（预留给未来使用）
 		msg.orientation_covariance[3] = 0.0f;  // 预留：可用于 vx
 		msg.orientation_covariance[4] = 0.0f;  // 预留：可用于 vy
 		msg.orientation_covariance[5] = 0.0f;  // 预留：可用于 vz
-		
+
 		// 精度信息
 		msg.orientation_covariance[6] = global_pos.eph;  // 水平位置精度（米）
 		msg.orientation_covariance[7] = global_pos.epv;  // 垂直位置精度（米）

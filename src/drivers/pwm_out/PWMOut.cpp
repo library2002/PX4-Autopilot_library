@@ -34,6 +34,7 @@
 #include "PWMOut.hpp"
 
 #include <px4_platform_common/sem.hpp>
+#include <parameters/param.h>
 
 PWMOut::PWMOut() :
 	OutputModuleInterface(MODULE_NAME, px4::wq_configurations::hp_default)
@@ -171,26 +172,38 @@ void PWMOut::Run()
 	// UAVCAN commands directly set PWM values from CAN bus
 	uavcan_control_command_s uavcan_cmd;
 	if (_uavcan_control_command_sub.update(&uavcan_cmd)) {
-		// Force PWM initialization if not already done
-		// disarmed 状态下PWM不可输出，此时便于测试直接强制解锁，测试完后再关闭
-		if (!_pwm_on) {
-			if (update_pwm_out_state(true)) {
-				_pwm_on = true;
-			}
+		// Filter out messages from our own node to prevent feedback loop
+		int32_t my_node_id = 0;
+		param_t node_id_param = param_find("UAVCAN_NODE_ID");
+		if (node_id_param != PARAM_INVALID) {
+			param_get(node_id_param, &my_node_id);
 		}
 
-		if (_pwm_initialized) {
-			// Apply PWM values from UAVCAN to all channels
-			for (uint8_t i = 0; i < math::min(uavcan_cmd.num_outputs, (uint8_t)_num_outputs); i++) {
-				if (_pwm_mask & (1 << i)) {
-					uint16_t pwm_value = uavcan_cmd.outputs[i];
-					// Validate PWM range (900-2100μs)
-					if (pwm_value >= 900 && pwm_value <= 2100) {
-						up_pwm_servo_set(i, pwm_value);
-					}
+		// Ignore commands from ourselves (feedback loop prevention)
+		if (my_node_id > 0 && uavcan_cmd.source_node_id == (uint8_t)my_node_id) {
+			// Skip processing our own commands
+		} else {
+			// Force PWM initialization if not already done
+			// disarmed 状态下PWM不可输出，此时便于测试直接强制解锁，测试完后再关闭
+			if (!_pwm_on) {
+				if (update_pwm_out_state(true)) {
+					_pwm_on = true;
 				}
 			}
-			up_pwm_update(_pwm_mask);
+
+			if (_pwm_initialized) {
+				// Apply PWM values from UAVCAN to all channels
+				for (uint8_t i = 0; i < math::min(uavcan_cmd.num_outputs, (uint8_t)_num_outputs); i++) {
+					if (_pwm_mask & (1 << i)) {
+						uint16_t pwm_value = uavcan_cmd.outputs[i];
+						// Validate PWM range (900-2100μs)
+						if (pwm_value >= 900 && pwm_value <= 2100) {
+							up_pwm_servo_set(i, pwm_value);
+						}
+					}
+				}
+				up_pwm_update(_pwm_mask);
+			}
 		}
 	}
 

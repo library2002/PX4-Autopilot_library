@@ -104,7 +104,7 @@ FixedwingRateControl::vehicle_manual_poll()
 			    !_vcontrol_mode.flag_control_attitude_enabled) {
 
 				// RATE mode we need to generate the rate setpoint from manual user inputs
-
+				// 角速率控制（特技飞行）
 				if (_vehicle_status.is_vtol_tailsitter && _vehicle_status.vehicle_type == vehicle_status_s::VEHICLE_TYPE_FIXED_WING) {
 					// the rate_sp must always be published in body (hover) frame
 					_rates_sp.roll = _manual_control_setpoint.yaw * radians(_param_fw_acro_z_max.get());
@@ -123,6 +123,7 @@ FixedwingRateControl::vehicle_manual_poll()
 
 			} else {
 				// Manual/direct control, filled in FW-frame. Note that setpoints will get transformed to body frame prior publishing.
+				// Manual/Stabilized模式 直接舵面控制
 				const float airspeed_scaling_sq = _airspeed_scaling * _airspeed_scaling;
 
 				_vehicle_torque_setpoint.xyz[0] = math::constrain(_manual_control_setpoint.roll * _param_fw_man_r_sc.get() +
@@ -145,6 +146,7 @@ FixedwingRateControl::vehicle_land_detected_poll()
 		vehicle_land_detected_s vehicle_land_detected {};
 
 		if (_vehicle_land_detected_sub.copy(&vehicle_land_detected)) {
+			//  检测飞机是否着陆，用于复位积分器
 			_landed = vehicle_land_detected.landed;
 		}
 	}
@@ -245,14 +247,14 @@ void FixedwingRateControl::Run()
 			dt = math::constrain((time_now_us - _last_run) * 1e-6f, DT_MIN, DT_MAX);
 			_last_run = time_now_us;
 		}
-
+// 角速度复制
 		vehicle_angular_velocity_s angular_velocity{};
 		_vehicle_angular_velocity_sub.copy(&angular_velocity);
 
 		Vector3f rates(angular_velocity.xyz);
 		Vector3f angular_accel{angular_velocity.xyz_derivative};
 
-		// Tailsitter: rotate setpoint from hover to fixed-wing frame (controller is in fixed-wing frame, interface in hover)
+		//  尾座式VTOL坐标转换Tailsitter: rotate setpoint from hover to fixed-wing frame (controller is in fixed-wing frame, interface in hover)
 		if (_vehicle_status.is_vtol_tailsitter) {
 			rates = Vector3f(-angular_velocity.xyz[2], angular_velocity.xyz[1], angular_velocity.xyz[0]);
 			angular_accel = Vector3f(-angular_velocity.xyz_derivative[2], angular_velocity.xyz_derivative[1],
@@ -272,7 +274,7 @@ void FixedwingRateControl::Run()
 
 		vehicle_manual_poll();
 		vehicle_land_detected_poll();
-
+// 主控制部分
 		/* if we are in rotary wing mode, do nothing */
 		if (_vehicle_status.vehicle_type == vehicle_status_s::VEHICLE_TYPE_ROTARY_WING && !_vehicle_status.is_vtol) {
 			perf_end(_loop_perf);
@@ -295,7 +297,7 @@ void FixedwingRateControl::Run()
 				_rate_control.resetIntegral();
 			}
 
-			// Update saturation status from control allocation feedback
+			// 控制分配反馈处理（抗饱和）Update saturation status from control allocation feedback
 			// TODO: send the unallocated value directly for better anti-windup
 			Vector3<bool> diffthr_enabled(
 				_param_vt_fw_difthr_en & static_cast<int32_t>(VTOLFixedWingDifferentialThrustEnabledBit::ROLL_BIT),
@@ -322,7 +324,7 @@ void FixedwingRateControl::Run()
 				}
 			}
 
-			// Set saturation flags for control surface controlled axes
+			// Set saturation flags for control surface controlled axes VTOL使用矩阵1
 			if (_control_allocator_status_subs[_vehicle_status.is_vtol ? 1 : 0].update(&control_allocator_status)) {
 				for (size_t i = 0; i < 3; i++) {
 					if (!diffthr_enabled(i)) {
@@ -355,7 +357,7 @@ void FixedwingRateControl::Run()
 				trim(2) += interpolate(airspeed, _param_fw_airspd_trim.get(), _param_fw_airspd_max.get(), 0.0f,
 						       _param_fw_dtrim_y_vmax.get());
 			}
-
+// 速率控制核心计算
 			if (_vcontrol_mode.flag_control_rates_enabled) {
 				_rates_sp_sub.update(&_rates_sp);
 
@@ -365,12 +367,13 @@ void FixedwingRateControl::Run()
 				if (_vehicle_status.is_vtol_tailsitter) {
 					body_rates_setpoint = Vector3f(-_rates_sp.yaw, _rates_sp.pitch, _rates_sp.roll);
 				}
-
+				// 前馈增益缩放: 除以空速缩放因子（与PID输出反向缩放）
 				const Vector3f gain_ff(_param_fw_rr_ff.get(), _param_fw_pr_ff.get(), _param_fw_yr_ff.get());
 				const Vector3f scaled_gain_ff = gain_ff / _airspeed_scaling;
 				_rate_control.setFeedForwardGain(scaled_gain_ff);
 
 				// Run attitude RATE controllers which need the desired attitudes from above, add trim.
+// PID控制器核心调用		输出：期望的角加速度; 当前角速度反馈rates，角速度设定值body_rates_setpoint，角加速度angular_accel，时间间隔dt，是否着陆_landed
 				const Vector3f angular_acceleration_setpoint = _rate_control.update(rates, body_rates_setpoint, angular_accel, dt, _landed);
 
 				Vector3f control_u = _gain_compression.getGains().emult(angular_acceleration_setpoint * _airspeed_scaling * _airspeed_scaling);
@@ -383,7 +386,7 @@ void FixedwingRateControl::Run()
 					control_u(2) = _manual_control_setpoint.yaw * _param_fw_man_y_sc.get();
 					_rate_control.resetIntegral(2);
 				}
-
+// 输出处理
 				if (control_u.isAllFinite()) {
 					matrix::constrain(control_u + trim, -1.f, 1.f).copyTo(_vehicle_torque_setpoint.xyz);
 
@@ -409,7 +412,7 @@ void FixedwingRateControl::Run()
 					_vehicle_thrust_setpoint.xyz[0] *= _battery_scale;
 				}
 			}
-
+// 发布PID内部状态供调试和监控使用。
 			// publish rate controller status
 			rate_ctrl_status_s rate_ctrl_status{};
 			_rate_control.getRateControlStatus(rate_ctrl_status);
@@ -418,7 +421,7 @@ void FixedwingRateControl::Run()
 			_rate_ctrl_status_pub.publish(rate_ctrl_status);
 
 		} else {
-			// full manual
+			// full manual 完全手动模式处理
 			_gain_compression.reset();
 			_rate_control.resetIntegral();
 		}
@@ -434,16 +437,16 @@ void FixedwingRateControl::Run()
 			_vehicle_torque_setpoint.xyz[0] = _vehicle_torque_setpoint.xyz[2];
 			_vehicle_torque_setpoint.xyz[2] = -helper;
 		}
-
+// 发布推力和力矩设定值
 		/* Only publish if any of the proper modes are enabled */
 		if (_vcontrol_mode.flag_control_rates_enabled ||
 		    _vcontrol_mode.flag_control_attitude_enabled ||
 		    _vcontrol_mode.flag_control_manual_enabled) {
-			{
+			{	//推力（油门）
 				_vehicle_thrust_setpoint.timestamp = hrt_absolute_time();
 				_vehicle_thrust_setpoint.timestamp_sample = angular_velocity.timestamp_sample;
 				_vehicle_thrust_setpoint_pub.publish(_vehicle_thrust_setpoint);
-
+				// 力矩（滚转/俯仰/偏航控制）
 				_vehicle_torque_setpoint.timestamp = hrt_absolute_time();
 				_vehicle_torque_setpoint.timestamp_sample = angular_velocity.timestamp_sample;
 				_vehicle_torque_setpoint_pub.publish(_vehicle_torque_setpoint);
@@ -455,7 +458,7 @@ void FixedwingRateControl::Run()
 		// Manual flaps/spoilers control, also active in VTOL Hover. Is handled and published in FW Position controller/VTOL module if Auto.
 		if (_vcontrol_mode.flag_control_manual_enabled) {
 
-			// Flaps control
+			// Flaps control 襟翼控制
 			float flaps_control = 0.f; // default to no flaps
 
 			/* map flaps by default to manual if valid */
@@ -468,7 +471,7 @@ void FixedwingRateControl::Run()
 			flaps_setpoint.normalized_setpoint = flaps_control;
 			_flaps_setpoint_pub.publish(flaps_setpoint);
 
-			// Spoilers control
+			// Spoilers control 扰流板控制
 			float spoilers_control = 0.f; // default to no spoilers
 
 			switch (_param_fw_spoilers_man.get()) {
@@ -498,7 +501,7 @@ void FixedwingRateControl::Run()
 
 	perf_end(_loop_perf);
 }
-
+// 计算控制面消耗的能量
 void FixedwingRateControl::updateActuatorControlsStatus(float dt)
 {
 	for (int i = 0; i < 3; i++) {

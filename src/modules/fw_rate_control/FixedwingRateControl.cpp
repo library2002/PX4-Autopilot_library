@@ -359,7 +359,7 @@ void FixedwingRateControl::Run()
 			}
 // 速率控制核心计算
 			if (_vcontrol_mode.flag_control_rates_enabled) {
-				_rates_sp_sub.update(&_rates_sp);
+				_rates_sp_sub.update(&_rates_sp); // 速率控制注入点；订阅速率设定值
 
 				Vector3f body_rates_setpoint = Vector3f(_rates_sp.roll, _rates_sp.pitch, _rates_sp.yaw);
 

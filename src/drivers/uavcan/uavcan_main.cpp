@@ -89,6 +89,9 @@ UavcanNode::UavcanNode(uavcan::ICanDriver &can_driver, uavcan::ISystemClock &sys
 #if defined(CONFIG_UAVCAN_CONTROL_COMMAND_SENDER)
 	_control_command_sender(_node),
 #endif
+#if defined(CONFIG_UAVCAN_FORMATION_RATES_SENDER)
+	_formation_rates_sender(_node),
+#endif
 #if defined(CONFIG_UAVCAN_BEEP_CONTROLLER)
 	_beep_controller(_node),
 #endif
@@ -508,6 +511,17 @@ UavcanNode::init(uavcan::NodeID node_id, UAVCAN_DRIVER::BusEvent &bus_events)
 
 	fill_node_info();
 
+	// Pre-register formation parameters to ensure they are available at runtime
+	// even if the formation modules are not initialized yet
+	param_find("FORM_FOLLOWER_EN");
+	param_find("FORM_POSITION");
+	param_find("FORM_TIMEOUT");
+	param_find("FORM_MASTER_EN");
+	param_find("FORM_R2P_GAIN");
+	param_find("FORM_YAW_K");
+	param_find("FORM_THR_DIFF");
+	param_find("FORM_PITCH_SYNC");
+
 	int ret;
 
 	// UAVCAN_PUB_ARM
@@ -532,6 +546,21 @@ UavcanNode::init(uavcan::NodeID node_id, UAVCAN_DRIVER::BusEvent &bus_events)
 
 	if (uavcan_pub_att == 1) {
 		ret = _attitude_publisher.init();
+
+		if (ret < 0) {
+			return ret;
+		}
+	}
+
+#endif
+
+#if defined(CONFIG_UAVCAN_FORMATION_RATES_SENDER)
+	// UAVCAN_PUB_FORM
+	int32_t uavcan_pub_form = 0;
+	param_get(param_find("UAVCAN_PUB_FORM"), &uavcan_pub_form);
+
+	if (uavcan_pub_form == 1) {
+		ret = _formation_rates_sender.init();
 
 		if (ret < 0) {
 			return ret;

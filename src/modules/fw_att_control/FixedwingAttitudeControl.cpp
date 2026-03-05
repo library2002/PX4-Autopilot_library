@@ -160,7 +160,7 @@ FixedwingAttitudeControl::vehicle_manual_poll(const float yaw_body)
 
 void
 FixedwingAttitudeControl::vehicle_attitude_setpoint_poll()
-{
+{//姿态注入点
 	if (_att_sp_sub.update(&_att_sp)) {
 		_rates_sp.thrust_body[0] = _att_sp.thrust_body[0];
 		_rates_sp.thrust_body[1] = _att_sp.thrust_body[1];

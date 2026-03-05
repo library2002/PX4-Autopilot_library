@@ -256,6 +256,18 @@ PARAM_DEFINE_INT32(UAVCAN_PUB_ATT, 0);
 PARAM_DEFINE_INT32(UAVCAN_PUB_CTRL, 0);
 
 /**
+ * publish formation rates
+ *
+ * Enable UAVCAN formation rate setpoint publication
+ *  uavcan::equipment::actuator::ArrayCommand (with formation encoding)
+ *
+ * @boolean
+ * @reboot_required true
+ * @group UAVCAN
+ */
+PARAM_DEFINE_INT32(UAVCAN_PUB_FORM, 0);
+
+/**
  * publish RTCM stream
  *
  * Enable UAVCAN RTCM stream publication
@@ -462,6 +474,18 @@ PARAM_DEFINE_INT32(UAVCAN_SUB_ATT, 0);
 PARAM_DEFINE_INT32(UAVCAN_SUB_CTRL, 0);
 
 /**
+ * subscription formation rates
+ *
+ * Enable UAVCAN formation rate setpoint subscription.
+ *  uavcan::equipment::actuator::ArrayCommand (with formation encoding)
+ *
+ * @boolean
+ * @reboot_required true
+ * @group UAVCAN
+ */
+PARAM_DEFINE_INT32(UAVCAN_SUB_FORM, 0);
+
+/**
  * subscription range finder
  *
  * Enable UAVCAN range finder subscription.
@@ -496,3 +520,118 @@ PARAM_DEFINE_INT32(UAVCAN_SUB_BTN, 0);
  * @group UAVCAN
  */
 PARAM_DEFINE_INT32(UAVCAN_SUB_MBD, 0);
+
+/**
+ * Formation follower enable
+ *
+ * Enable the formation follower controller.
+ * Set to 1 on left/right follower aircraft only.
+ *
+ * @boolean
+ * @group Formation Control
+ * @reboot_required true
+ */
+PARAM_DEFINE_INT32(FORM_FOLLOWER_EN, 0);
+
+/**
+ * Formation position
+ *
+ * Aircraft position in formation:
+ * 0 = Center (master)
+ * 1 = Left follower
+ * 2 = Right follower
+ *
+ * This must match the physical connection position.
+ *
+ * @value 0 Center
+ * @value 1 Left
+ * @value 2 Right
+ * @group Formation Control
+ */
+PARAM_DEFINE_INT32(FORM_POSITION, 0);
+
+/**
+ * Formation command timeout
+ *
+ * Maximum time without receiving formation rate commands before
+ * entering neutral mode and exiting Offboard.
+ *
+ * @unit s
+ * @min 0.1
+ * @max 5.0
+ * @decimal 2
+ * @increment 0.1
+ * @group Formation Control
+ */
+PARAM_DEFINE_FLOAT(FORM_TIMEOUT, 0.5f);
+
+/**
+ * Formation master enable
+ *
+ * Enable the formation master controller.
+ * Set to 1 on the center (master) aircraft only.
+ *
+ * @boolean
+ * @group Formation Control
+ * @reboot_required true
+ */
+PARAM_DEFINE_INT32(FORM_MASTER_EN, 0);
+
+/**
+ * Roll to pitch mapping gain
+ *
+ * Converts master aircraft roll input to follower pitch rate command.
+ * Physical meaning: master roll input (normalized) → follower pitch rate (rad/s).
+ *
+ * Larger values = stronger "whole-plane-as-aileron" effect.
+ *
+ * @unit rad/s
+ * @min 0.5
+ * @max 5.0
+ * @decimal 2
+ * @increment 0.1
+ * @group Formation Control
+ */
+PARAM_DEFINE_FLOAT(FORM_R2P_GAIN, 2.0f);
+
+/**
+ * Yaw coupling coefficient
+ *
+ * Adds coordinated yaw command when rolling to prevent sideslip.
+ *
+ * @min 0.0
+ * @max 1.0
+ * @decimal 2
+ * @increment 0.05
+ * @group Formation Control
+ */
+PARAM_DEFINE_FLOAT(FORM_YAW_K, 0.3f);
+
+/**
+ * Throttle differential for outer plane
+ *
+ * Additional throttle for the outer plane during roll maneuvers.
+ *
+ * @unit norm
+ * @min 0.0
+ * @max 0.2
+ * @decimal 3
+ * @increment 0.01
+ * @group Formation Control
+ */
+PARAM_DEFINE_FLOAT(FORM_THR_DIFF, 0.05f);
+
+/**
+ * Pitch synchronization coefficient
+ *
+ * How much follower planes should track master pitch.
+ * 0.0 = no sync, 1.0 = full sync.
+ *
+ * @unit norm
+ * @min 0.0
+ * @max 1.0
+ * @decimal 2
+ * @increment 0.05
+ * @group Formation Control
+ */
+PARAM_DEFINE_FLOAT(FORM_PITCH_SYNC, 0.1f);

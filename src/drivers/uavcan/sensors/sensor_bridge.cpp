@@ -81,6 +81,9 @@
 #if defined(CONFIG_UAVCAN_SENSOR_CONTROL_COMMAND)
 #include "control_command.hpp"
 #endif
+#if defined(CONFIG_UAVCAN_SENSOR_FORMATION_RATES)
+#include "formation_rates.hpp"
+#endif
 #if defined(CONFIG_UAVCAN_SENSOR_RANGEFINDER)
 #include "rangefinder.hpp"
 #endif
@@ -222,6 +225,16 @@ void IUavcanSensorBridge::make_all(uavcan::INode &node, List<IUavcanSensorBridge
 
 	if (uavcan_sub_att != 0) {
 		list.add(new UavcanAhrsSolutionBridge(node, node_info_publisher));
+	}
+
+#endif
+
+#if defined(CONFIG_UAVCAN_SENSOR_FORMATION_RATES)
+	int32_t uavcan_sub_form = 0;
+	param_get(param_find("UAVCAN_SUB_FORM"), &uavcan_sub_form);
+
+	if (uavcan_sub_form != 0) {
+		list.add(new FormationRatesBridge(node, node_info_publisher));
 	}
 
 #endif

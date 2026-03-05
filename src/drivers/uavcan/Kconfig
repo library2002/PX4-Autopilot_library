@@ -18,6 +18,10 @@ if DRIVERS_UAVCAN
         bool "Include control command sender"
         default y
 
+    config UAVCAN_FORMATION_RATES_SENDER
+        bool "Include formation rates sender"
+        default n
+
     config UAVCAN_BEEP_CONTROLLER
         bool "Include beep controller"
         default y
@@ -53,6 +57,10 @@ if DRIVERS_UAVCAN
     config UAVCAN_SENSOR_CONTROL_COMMAND
         bool "Subscribe to Control Command:             uavcan::equipment::actuator::ArrayCommand"
         default y
+
+    config UAVCAN_SENSOR_FORMATION_RATES
+        bool "Subscribe to Formation Rates:             uavcan::equipment::actuator::ArrayCommand (formation encoding)"
+        default n
 
     config UAVCAN_SENSOR_AIRSPEED
         bool "Subscribe to Airspeed:                    uavcan::equipment::air_data::IndicatedAirspeed | uavcan::equipment::air_data::TrueAirspeed | uavcan::equipment::air_data::StaticTemperature"

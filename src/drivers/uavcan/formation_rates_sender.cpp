@@ -96,10 +96,13 @@ void FormationRatesSender::update_params()
 
 void FormationRatesSender::periodic_update(const uavcan::TimerEvent &)
 {
-	// 获取遥控器输入
+	// 获取遥控器输入（使用 copy 而不是 update，保证始终有数据）
 	manual_control_setpoint_s manual{};
-	if (!_manual_sub.update(&manual)) {
-		return;  // 无新数据
+	_manual_sub.copy(&manual);
+
+	// 检查数据有效性（时间戳不能太旧，500ms = 500000us）
+	if (hrt_elapsed_time(&manual.timestamp) > 500000) {
+		return;  // 遥控器数据超过 500ms 未更新，停止发送
 	}
 
 	// 检查是否在固定翼模式

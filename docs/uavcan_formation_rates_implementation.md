@@ -223,6 +223,45 @@ reboot
 commander mode offboard
 ```
 
+### 4.3 无 GPS 配置（从机测试用）
+
+**如果从机没有 GPS 模块，需要额外配置以下参数来绕过位置估计检查：**
+
+```bash
+# 从机端额外配置（仅用于测试/开发环境）
+param set COM_ARM_WO_GPS 1           # 允许无 GPS 解锁
+param set CBRK_VELPOSERR 501090426   # 禁用速度/位置错误检查（断路器）
+param set COM_POS_FS_EPH 100         # 放宽位置估计健康阈值（米）
+param set COM_POS_FS_GAIN 0          # 禁用位置丢失故障保护
+param set EKF2_HGT_REF 0             # 高度参考源：0=气压计
+param set EKF2_GPS_CHECK 0           # 禁用 GPS 质量检查
+
+# 对于固定翼，可能还需要：
+param set FW_ARSP_MODE 0             # 禁用空速传感器要求（如果没有）
+
+param save
+reboot
+```
+
+**⚠️ 重要安全提示：**
+- 这些设置会**降低安全性**，仅适用于地面测试或受控环境
+- 编队速率控制（body_rate 模式）只需要姿态估计，不需要位置信息
+- 确保 IMU（陀螺仪/加速度计）和气压计工作正常
+- 生产环境建议使用 GPS 或其他定位系统（光流、UWB 等）
+- `CBRK_VELPOSERR=501090426` 是紧急断路器，绕过了关键安全检查
+
+**验证配置是否生效：**
+```bash
+# 检查解锁前检查状态
+commander status
+
+# 如果仍显示 "not ready"，查看具体原因
+commander check
+
+# 查看 EKF 状态
+ekf2 status
+```
+
 **✨ 新架构优势：**
 - 主机：设置参数后重启，UAVCAN 发送器**自动工作**，无需独立模块
 - 从机：设置参数后重启，UAVCAN 接收器**自动处理**

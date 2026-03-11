@@ -117,11 +117,11 @@ void FormationRatesSender::periodic_update(const uavcan::TimerEvent &)
 	// ========== 计算左机指令 ==========
 	uavcan::equipment::actuator::ArrayCommand left_msg;
 
-	// 滚转速率（刚性连接，从机不需要独立滚转）
+	// 滚转速率，从机尽量保持与主机一致，编队滚转主要通过俯仰来实现，但从机本身要有抗干扰能力
 	uavcan::equipment::actuator::Command left_roll;
 	left_roll.actuator_id = 100;
 	left_roll.command_type = uavcan::equipment::actuator::Command::COMMAND_TYPE_SPEED;
-	left_roll.command_value = 0.0f;
+	left_roll.command_value = manual.roll;
 	left_msg.commands.push_back(left_roll);
 
 	// 俯仰速率 = 编队滚转映射 + 俯仰同步
@@ -163,11 +163,11 @@ void FormationRatesSender::periodic_update(const uavcan::TimerEvent &)
 	// ========== 计算右机指令 ==========
 	uavcan::equipment::actuator::ArrayCommand right_msg;
 
-	// 滚转速率（刚性连接，从机不需要独立滚转）
+	// 滚转速率，从机尽量保持与主机一致，编队滚转主要通过俯仰来实现，但从机本身要有抗干扰能力
 	uavcan::equipment::actuator::Command right_roll;
 	right_roll.actuator_id = 100;
 	right_roll.command_type = uavcan::equipment::actuator::Command::COMMAND_TYPE_SPEED;
-	right_roll.command_value = 0.0f;
+	right_roll.command_value = manual.roll;  // 与主机相同的滚转角度指令，保持编队稳定
 	right_msg.commands.push_back(right_roll);
 
 	// 俯仰速率 = 编队滚转映射（反向）+ 俯仰同步

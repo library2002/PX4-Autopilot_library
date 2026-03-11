@@ -39,9 +39,12 @@
 #include <uavcan/equipment/actuator/ArrayCommand.hpp>
 
 #include <uORB/Publication.hpp>
+#include <uORB/Subscription.hpp>
 #include <uORB/topics/vehicle_rates_setpoint.h>
 #include <uORB/topics/offboard_control_mode.h>
+#include <uORB/topics/vehicle_attitude.h>
 #include <parameters/param.h>
+#include <matrix/math.hpp>
 
 /**
  * @brief 编队速率指令 UAVCAN 接收器（直接控制模式）
@@ -89,13 +92,19 @@ private:
 
 	hrt_abstime _last_command_time{0};
 
+	// 姿态订阅
+	uORB::Subscription _vehicle_attitude_sub{ORB_ID(vehicle_attitude)};
+	vehicle_attitude_s _vehicle_attitude{};
+
 	// 参数句柄
 	param_t _param_follower_enable_h;
 	param_t _param_formation_position_h;
 	param_t _param_timeout_h;
+	param_t _param_roll_to_pitch_gain_h;
 
 	// 参数缓存值
 	int32_t _follower_enable{0};
 	int32_t _formation_position{0};
 	float _timeout{0.5f};
+	float _roll_to_pitch_gain{1.0f};
 };

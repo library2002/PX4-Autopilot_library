@@ -141,13 +141,13 @@ void FormationRatesSender::periodic_update(const uavcan::TimerEvent &)
 	left_yaw.command_value = manual.yaw + (-manual.roll * _yaw_coupling);
 	left_msg.commands.push_back(left_yaw);
 
-	// 推力 = 基础油门 + 转弯差速（与横滚成比例，直飞时差速为零）
-	// 右转(roll>0)时左机在外侧需更多推力，左转(roll<0)时左机在内侧需更少推力
+	// 推力 = 基础油门 + 偏航差速（仅右偏航时增加，左偏航时保持）
+	// 右偏航(yaw>0)时左机在外侧需更多推力，左偏航时不减小
 	uavcan::equipment::actuator::Command left_thrust;
 	left_thrust.actuator_id = 103;
 	left_thrust.command_type = uavcan::equipment::actuator::Command::COMMAND_TYPE_UNITLESS;
 	left_thrust.command_value = math::constrain(
-		(manual.throttle + 1.0f) * 0.5f + manual.roll * _throttle_diff, 0.0f, 1.0f);
+		(manual.throttle + 1.0f) * 0.5f + math::max(manual.yaw, 0.0f) * _throttle_diff, 0.0f, 1.0f);
 	left_msg.commands.push_back(left_thrust);
 
 	// 编队位置标识
@@ -187,13 +187,13 @@ void FormationRatesSender::periodic_update(const uavcan::TimerEvent &)
 	right_yaw.command_value = manual.yaw + (manual.roll * _yaw_coupling);
 	right_msg.commands.push_back(right_yaw);
 
-	// 推力 = 基础油门 - 转弯差速（与左机方向相反）
-	// 右转(roll>0)时右机在内侧需更少推力，左转(roll<0)时右机在外侧需更多推力
+	// 推力 = 基础油门 - 偏航差速（仅左偏航时增加，右偏航时保持）
+	// 左偏航(yaw<0)时右机在外侧需更多推力，右偏航时不减小
 	uavcan::equipment::actuator::Command right_thrust;
 	right_thrust.actuator_id = 103;
 	right_thrust.command_type = uavcan::equipment::actuator::Command::COMMAND_TYPE_UNITLESS;
 	right_thrust.command_value = math::constrain(
-		(manual.throttle + 1.0f) * 0.5f - manual.roll * _throttle_diff, 0.0f, 1.0f);
+		(manual.throttle + 1.0f) * 0.5f - math::min(manual.yaw, 0.0f) * _throttle_diff, 0.0f, 1.0f);
 	right_msg.commands.push_back(right_thrust);
 
 	// 编队位置标识

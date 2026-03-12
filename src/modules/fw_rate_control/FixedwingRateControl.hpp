@@ -159,6 +159,9 @@ private:
 	param_t _handle_param_vt_fw_difthr_en{PARAM_INVALID};
 	int32_t _param_vt_fw_difthr_en{0};
 
+	param_t _handle_param_form_thr_diff{PARAM_INVALID};
+	float _param_form_thr_diff{0.0f};
+
 	DEFINE_PARAMETERS(
 		(ParamFloat<px4::params::FW_ACRO_X_MAX>) _param_fw_acro_x_max,
 		(ParamFloat<px4::params::FW_ACRO_Y_MAX>) _param_fw_acro_y_max,

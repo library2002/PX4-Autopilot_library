@@ -49,6 +49,7 @@ FixedwingRateControl::FixedwingRateControl(bool vtol) :
 	_loop_perf(perf_alloc(PC_ELAPSED, MODULE_NAME": cycle"))
 {
 	_handle_param_vt_fw_difthr_en = param_find("VT_FW_DIFTHR_EN");
+	_handle_param_form_thr_diff = param_find("FORM_THR_DIFF");
 
 	/* fetch initial parameter values */
 	parameters_update();
@@ -88,6 +89,10 @@ FixedwingRateControl::parameters_update()
 		param_get(_handle_param_vt_fw_difthr_en, &_param_vt_fw_difthr_en);
 	}
 
+	if (_handle_param_form_thr_diff != PARAM_INVALID) {
+		param_get(_handle_param_form_thr_diff, &_param_form_thr_diff);
+	}
+
 
 	return PX4_OK;
 }
@@ -117,7 +122,8 @@ FixedwingRateControl::vehicle_manual_poll()
 
 				_rates_sp.timestamp = hrt_absolute_time();
 				_rates_sp.pitch = -_manual_control_setpoint.pitch * radians(_param_fw_acro_y_max.get());
-				_rates_sp.thrust_body[0] = (_manual_control_setpoint.throttle + 1.f) * .5f;
+				_rates_sp.thrust_body[0] = (_manual_control_setpoint.throttle + 1.f) * .5f
+							  + 0.5f * fabsf(_manual_control_setpoint.yaw) * _param_form_thr_diff;
 
 				_rate_sp_pub.publish(_rates_sp);
 
@@ -133,7 +139,8 @@ FixedwingRateControl::vehicle_manual_poll()
 				_vehicle_torque_setpoint.xyz[2] = math::constrain(_manual_control_setpoint.yaw * _param_fw_man_y_sc.get() +
 								  _param_trim_yaw.get() * airspeed_scaling_sq, -1.f, 1.f);
 
-				_vehicle_thrust_setpoint.xyz[0] = math::constrain((_manual_control_setpoint.throttle + 1.f) * .5f, 0.f, 1.f);
+				_vehicle_thrust_setpoint.xyz[0] = math::constrain((_manual_control_setpoint.throttle + 1.f) * .5f
+									  + 0.5f * fabsf(_manual_control_setpoint.yaw) * _param_form_thr_diff, 0.f, 1.f);
 			}
 		}
 	}

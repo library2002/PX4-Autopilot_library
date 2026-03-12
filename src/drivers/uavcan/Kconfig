@@ -15,8 +15,8 @@ if DRIVERS_UAVCAN
         default y
 
     config UAVCAN_CONTROL_COMMAND_SENDER
-        bool "Include control command sender"
-        default y
+        bool "Include control command sender (DEPRECATED)"
+        default n
 
     config UAVCAN_FORMATION_RATES_SENDER
         bool "Include formation rates sender"

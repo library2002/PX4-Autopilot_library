@@ -55,7 +55,7 @@ _rates_sp.thrust_body[0] = (_manual_control_setpoint.throttle + 1.f) * .5f
 ```cpp
 _vehicle_thrust_setpoint.xyz[0] = math::constrain(
     (_manual_control_setpoint.throttle + 1.f) * .5f
-    + 0.5f * fabsf(_manual_control_setpoint.yaw) * _param_form_thr_diff, 
+    + 0.5f * fabsf(_manual_control_setpoint.yaw) * _param_form_thr_diff,
     0.f, 1.f);
 ```
 
@@ -97,3 +97,27 @@ _vehicle_thrust_setpoint.xyz[0] = math::constrain(
 - [UAVCAN 编队速率控制实现](uavcan_formation_rates_implementation.md)
 - [编队滚转跟踪实现](formation_roll_tracking_implementation.md)
 - [板级配置修改](board_config_fixedwing_changes.md)
+
+## CAN 通讯提速建议（2026-03-15）
+
+### 目标
+
+在不改变当前控制逻辑的前提下，提升编队指令的发送与接收实时性。
+
+### 已确认现状
+
+- `formation_rates_sender` 当前发送频率上限为 `100Hz`（代码常量 `MAX_RATE_HZ`）
+- 发送优先级为 `OneLowerThanHighest`
+- 当前实现稳定可用
+
+### 提速建议（未实施）
+
+1. 将发送频率从 `100Hz` 提高到 `200Hz`（先做首轮验证）
+2. 将 UAVCAN 发布优先级提升到 `Highest`
+3. 确认总线波特率统一为 `1Mbps`（主从一致）
+4. 接收侧参数读取改为“参数更新触发刷新”，减少每包 `param_get` 开销
+
+### 本轮结论
+
+- 用户决定：**暂时不修改代码**
+- 现阶段保持当前实现，后续如需提速再按上述方案逐项落地和验证
